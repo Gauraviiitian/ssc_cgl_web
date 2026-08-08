@@ -57,3 +57,18 @@ CREATE TABLE IF NOT EXISTS explanation_cache (
 
 CREATE INDEX IF NOT EXISTS idx_responses_session ON responses(session_id);
 CREATE INDEX IF NOT EXISTS idx_questions_subject_topic ON questions(subject, topic);
+
+-- Daily current affairs: question_date/source_url are only set for
+-- subject='Current Affairs' rows; NULL for the regular question bank.
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS question_date DATE;
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS source_url TEXT;
+CREATE INDEX IF NOT EXISTS idx_questions_date ON questions(question_date);
+
+CREATE TABLE IF NOT EXISTS daily_ca_runs (
+    question_date DATE PRIMARY KEY,      -- the date the quiz is published under
+    source_date DATE NOT NULL,           -- the date whose article was actually scraped (may lag behind on fallback)
+    source_url TEXT NOT NULL,
+    question_count INTEGER NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    telegram_posted_at TIMESTAMPTZ
+);

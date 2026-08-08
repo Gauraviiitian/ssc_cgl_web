@@ -71,7 +71,7 @@ def dashboard(request: Request):
     weak_flat = [(subject, topic) for subject, topics in weak.items() for topic in topics]
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "user": user, "weak_topics": weak_flat},
+        {"request": request, "user": user, "weak_topics": weak_flat, "ca_date": db.latest_ca_date()},
     )
 
 
@@ -83,6 +83,22 @@ def start_mock(request: Request):
     question_ids = adaptive.build_mock(user["id"], total_questions=MOCK_SIZE)
     session_id = db.create_session(user["id"])
     db.add_session_questions(session_id, question_ids)
+    return RedirectResponse(f"/mock/{session_id}", status_code=302)
+
+
+@app.post("/ca/start")
+def start_ca_quiz(request: Request):
+    user = current_user(request)
+    if not user:
+        return RedirectResponse("/", status_code=302)
+
+    ca_date = db.latest_ca_date()
+    if not ca_date:
+        return RedirectResponse("/dashboard", status_code=302)
+
+    questions = db.ca_questions_for_date(ca_date)
+    session_id = db.create_session(user["id"])
+    db.add_session_questions(session_id, [q["id"] for q in questions])
     return RedirectResponse(f"/mock/{session_id}", status_code=302)
 
 

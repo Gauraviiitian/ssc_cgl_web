@@ -19,5 +19,16 @@
   <form method="post" action="/mock/start">
     <button type="submit" class="primary">Start a Mock (20 Qs)</button>
   </form>
+
+  <div class="ca-box">
+    {% if ca_date %}
+    <form method="post" action="/ca/start">
+      <button type="submit" class="secondary">Today's Current Affairs Quiz (20 Qs)</button>
+    </form>
+    <p class="muted">Covers current affairs through {{ ca_date.strftime('%d %b %Y') }}</p>
+    {% else %}
+    <p class="muted">Current affairs quiz not available yet — check back after today's update.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

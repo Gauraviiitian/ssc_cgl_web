@@ -125,16 +125,65 @@ def get_question(question_id: int) -> dict | None:
         return dict(row) if row else None
 
 
-def insert_question(subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source="generated") -> int:
+def insert_question(subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source="generated", question_date=None, source_url=None) -> int:
     with get_cursor(commit=True) as cur:
         cur.execute(
             """
-            INSERT INTO questions (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            INSERT INTO questions (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source, question_date, source_url)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
             """,
-            (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source),
+            (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source, question_date, source_url),
         )
         return cur.fetchone()["id"]
+
+
+# --- daily current affairs ---
+
+def ca_questions_for_date(question_date) -> list[dict]:
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT * FROM questions WHERE subject = 'Current Affairs' AND question_date = %s ORDER BY id",
+            (question_date,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def latest_ca_date():
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT question_date FROM questions WHERE subject = 'Current Affairs' AND question_date IS NOT NULL ORDER BY question_date DESC LIMIT 1"
+        )
+        row = cur.fetchone()
+        return row["question_date"] if row else None
+
+
+def get_daily_ca_run(question_date) -> dict | None:
+    with get_cursor() as cur:
+        cur.execute("SELECT * FROM daily_ca_runs WHERE question_date = %s", (question_date,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def record_ca_run(question_date, source_date, source_url, question_count: int):
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            """
+            INSERT INTO daily_ca_runs (question_date, source_date, source_url, question_count)
+            VALUES (%s,%s,%s,%s)
+            ON CONFLICT (question_date) DO UPDATE SET
+                source_date = EXCLUDED.source_date, source_url = EXCLUDED.source_url,
+                question_count = EXCLUDED.question_count, generated_at = now()
+            """,
+            (question_date, source_date, source_url, question_count),
+        )
+
+
+def mark_ca_telegram_posted(question_date):
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "UPDATE daily_ca_runs SET telegram_posted_at = now() WHERE question_date = %s",
+            (question_date,),
+        )
 
 
 # --- sessions ---

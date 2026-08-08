@@ -50,6 +50,10 @@ button.primary, .btn-link.primary, button[type=submit].primary {
 }
 button.secondary { background: #eee; color: #333; }
 
+.ca-box { margin-top: 1rem; }
+.ca-box button.secondary { width: 100%; }
+.ca-box .muted { text-align: center; margin: 0.5rem 0 0; }
+
 .options { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.5rem; }
 .option {
   text-align: left; padding: 0.9rem 1rem; border-radius: 8px;
