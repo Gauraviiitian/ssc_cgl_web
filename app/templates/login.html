@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card centered">
+  <h1>SSC CGL Prep</h1>
+  <p class="muted">Enter your name to start practicing.</p>
+  <form method="post" action="/login">
+    <input type="text" name="name" placeholder="Your name" required autofocus>
+    <button type="submit">Continue</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Welcome, {{ user.name }}</h1>
+
+  {% if weak_topics %}
+  <div class="weak-box">
+    <h3>Your weak topics (get extra weight in your next mock)</h3>
+    <ul>
+      {% for subject, topic in weak_topics %}
+      <li><strong>{{ subject }}</strong> — {{ topic }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% else %}
+  <p class="muted">No weak-topic data yet — take a mock to build your profile.</p>
+  {% endif %}
+
+  <form method="post" action="/mock/start">
+    <button type="submit" class="primary">Start a Mock (20 Qs)</button>
+  </form>
+</div>
+{% endblock %}

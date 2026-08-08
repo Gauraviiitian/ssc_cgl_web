@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  {% if is_correct %}
+  <div class="result correct">✅ Correct</div>
+  {% else %}
+  <div class="result incorrect">❌ Incorrect — correct answer was {{ question.correct_option }}</div>
+  {% endif %}
+
+  <h2 class="qtext">{{ question.text }}</h2>
+  <ul class="reveal">
+    <li class="{% if question.correct_option == 'A' %}correct{% endif %} {% if selected_option == 'A' %}selected{% endif %}">A. {{ question.option_a }}</li>
+    <li class="{% if question.correct_option == 'B' %}correct{% endif %} {% if selected_option == 'B' %}selected{% endif %}">B. {{ question.option_b }}</li>
+    <li class="{% if question.correct_option == 'C' %}correct{% endif %} {% if selected_option == 'C' %}selected{% endif %}">C. {{ question.option_c }}</li>
+    <li class="{% if question.correct_option == 'D' %}correct{% endif %} {% if selected_option == 'D' %}selected{% endif %}">D. {{ question.option_d }}</li>
+  </ul>
+
+  <div id="explanation-box">
+    <button type="button" onclick="loadExplanation({{ session_id }}, {{ question.id }})" class="secondary">Explain</button>
+  </div>
+
+  <a href="/mock/{{ session_id }}" class="primary btn-link">{% if is_last %}See Summary{% else %}Next Question{% endif %}</a>
+</div>
+<script src="/static/app.js"></script>
+{% endblock %}

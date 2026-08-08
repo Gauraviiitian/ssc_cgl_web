@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <div class="progress">Question {{ progress }} / {{ total }} · <span class="tag">{{ question.subject }}</span> · <span id="timer">0s</span></div>
+  <h2 class="qtext">{{ question.text }}</h2>
+
+  <form method="post" action="/mock/{{ session_id }}/answer" class="options">
+    <input type="hidden" name="question_id" value="{{ question.id }}">
+    <button type="submit" name="selected_option" value="A" class="option">A. {{ question.option_a }}</button>
+    <button type="submit" name="selected_option" value="B" class="option">B. {{ question.option_b }}</button>
+    <button type="submit" name="selected_option" value="C" class="option">C. {{ question.option_c }}</button>
+    <button type="submit" name="selected_option" value="D" class="option">D. {{ question.option_d }}</button>
+  </form>
+</div>
+<script src="/static/app.js"></script>
+{% endblock %}

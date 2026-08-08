@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Mock Complete</h1>
+  <p class="score">{{ overall.correct }} / {{ overall.total }} correct</p>
+
+  <table class="summary-table">
+    <thead><tr><th>Subject</th><th>Correct</th><th>Attempts</th><th>Avg time (s)</th></tr></thead>
+    <tbody>
+      {% for row in by_subject %}
+      <tr>
+        <td>{{ row.subject }}</td>
+        <td>{{ row.correct }}</td>
+        <td>{{ row.attempts }}</td>
+        <td>{{ "%.1f"|format(row.avg_time_sec) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <a href="/dashboard" class="primary btn-link">Back to Dashboard</a>
+</div>
+{% endblock %}
