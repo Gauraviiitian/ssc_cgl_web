@@ -69,9 +69,32 @@ def dashboard(request: Request):
         return RedirectResponse("/", status_code=302)
     weak = adaptive.weak_topics_by_subject(user["id"])
     weak_flat = [(subject, topic) for subject, topics in weak.items() for topic in topics]
+
+    overall_perf = db.overall_performance(user["id"])
+    overall_accuracy = (
+        round(100 * overall_perf["total_correct"] / overall_perf["total_attempts"], 1)
+        if overall_perf["total_attempts"]
+        else None
+    )
+    subject_perf = [
+        {
+            **row,
+            "accuracy": round(100 * (row["correct"] or 0) / row["attempts"], 1) if row["attempts"] else 0,
+        }
+        for row in db.subject_performance(user["id"])
+    ]
+
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "user": user, "weak_topics": weak_flat, "ca_date": db.latest_ca_date()},
+        {
+            "request": request,
+            "user": user,
+            "weak_topics": weak_flat,
+            "ca_date": db.latest_ca_date(),
+            "overall_perf": overall_perf,
+            "overall_accuracy": overall_accuracy,
+            "subject_perf": subject_perf,
+        },
     )
 
 

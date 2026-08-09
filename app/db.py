@@ -186,6 +186,14 @@ def mark_ca_telegram_posted(question_date):
         )
 
 
+def mark_ca_pdf_posted(question_date):
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "UPDATE daily_ca_runs SET pdf_posted_at = now() WHERE question_date = %s",
+            (question_date,),
+        )
+
+
 # --- sessions ---
 
 def create_session(user_id: int) -> int:
@@ -314,6 +322,55 @@ def recent_answered_question_ids(user_id: int, session_limit: int = 1) -> list[i
         rows = cur.fetchall()
         # naive recency cap; session_limit reserved for future use if needed
         return [r["question_id"] for r in rows][: session_limit * 50]
+
+
+# --- performance (dashboard "My Performance" tab) ---
+
+def subject_performance(user_id: int) -> list[dict]:
+    """Accuracy per subject across the user's full history (Current Affairs
+    included automatically, since it's just another subject value)."""
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT q.subject,
+                   COUNT(*) AS attempts,
+                   SUM(CASE WHEN r.is_correct THEN 1 ELSE 0 END) AS correct
+            FROM responses r
+            JOIN questions q ON q.id = r.question_id
+            JOIN sessions s ON s.id = r.session_id
+            WHERE s.user_id = %s
+            GROUP BY q.subject
+            ORDER BY q.subject
+            """,
+            (user_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+def overall_performance(user_id: int) -> dict:
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT COUNT(*) AS total_sessions FROM sessions WHERE user_id = %s AND status = 'completed'",
+            (user_id,),
+        )
+        total_sessions = cur.fetchone()["total_sessions"]
+
+        cur.execute(
+            """
+            SELECT COUNT(*) AS total_attempts,
+                   SUM(CASE WHEN r.is_correct THEN 1 ELSE 0 END) AS total_correct
+            FROM responses r
+            JOIN sessions s ON s.id = r.session_id
+            WHERE s.user_id = %s
+            """,
+            (user_id,),
+        )
+        row = cur.fetchone()
+        return {
+            "total_sessions": total_sessions,
+            "total_attempts": row["total_attempts"] or 0,
+            "total_correct": row["total_correct"] or 0,
+        }
 
 
 # --- explanation cache ---

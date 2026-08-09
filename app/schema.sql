@@ -72,3 +72,5 @@ CREATE TABLE IF NOT EXISTS daily_ca_runs (
     generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     telegram_posted_at TIMESTAMPTZ
 );
+
+ALTER TABLE daily_ca_runs ADD COLUMN IF NOT EXISTS pdf_posted_at TIMESTAMPTZ;

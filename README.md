@@ -15,7 +15,8 @@ GROQ_API_KEY=...
 DATABASE_URL=postgresql://...   # Neon connection string
 SESSION_SECRET=...              # any random string, e.g. `python3 -c "import secrets; print(secrets.token_hex(32))"`
 TELEGRAM_BOT_TOKEN=...          # from @BotFather, only needed for scripts/post_telegram_quiz.py
-TELEGRAM_CHAT_ID=...            # the group chat id the bot should post the quiz into
+TELEGRAM_CHAT_ID=...            # the discussion group chat id the bot posts quiz polls into
+TELEGRAM_PREPZONE_CHANNEL_ID=...# the channel id the bot posts the daily recap PDF into
 ```
 
 Seed the question bank once (idempotent to re-run for more questions):
@@ -35,12 +36,15 @@ a day (see `.github/workflows/daily_current_affairs.yml`):
 
 ```bash
 .venv/bin/python3 scripts/generate_daily_ca.py   # scrape mahendras.org, ask Groq for 20 MCQs + explanations, save to Postgres
-.venv/bin/python3 scripts/post_telegram_quiz.py  # post today's 20 questions to Telegram as quiz polls
+.venv/bin/python3 scripts/post_telegram_quiz.py  # post today's 20 questions to the group as quiz polls, then a recap PDF to the channel
 ```
 
-Both are idempotent per day (tracked in the `daily_ca_runs` table) — re-running
-them the same day is a no-op. `generate_daily_ca.py` falls back to the most
-recent day's article if today's isn't published yet.
+Both scripts, and both steps within `post_telegram_quiz.py` (polls to the
+group, PDF to the channel), are independently idempotent per day (tracked in
+the `daily_ca_runs` table) — re-running is a no-op for whatever already
+succeeded, and only retries the part that didn't. `generate_daily_ca.py` falls
+back to combining the most recent available days' articles if today's isn't
+published yet.
 
 The web app exposes these as a "Today's Current Affairs Quiz" button on the
 dashboard, reusing the same mock-test flow (`/mock/{session_id}`) with that
