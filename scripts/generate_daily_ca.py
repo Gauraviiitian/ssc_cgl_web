@@ -36,10 +36,11 @@ def main():
         return
 
     print(f"Fetching current affairs source for {today}...")
-    source_text, source_url, source_date = ca_scraper.fetch_source_for_date(today)
+    source_text, source_urls, source_date = ca_scraper.fetch_source_for_date(today)
+    source_url = ", ".join(source_urls)
     if source_date != today:
-        print(f"  Note: {today}'s article wasn't up yet, using {source_date}'s instead.")
-    print(f"  Source: {source_url} ({len(source_text)} chars)")
+        print(f"  Note: {today}'s article wasn't up yet, combined {len(source_urls)} prior day(s) through {source_date} instead.")
+    print(f"  Source(s): {source_url} ({len(source_text)} chars)")
 
     print(f"Asking Groq for {QUESTION_COUNT} questions...")
     questions = llm.generate_ca_questions(source_text, count=QUESTION_COUNT)

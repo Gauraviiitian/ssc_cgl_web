@@ -59,7 +59,7 @@ def _post(method: str, payload: dict):
 def send_intro(question_date, run: dict):
     text = f"📅 Daily Current Affairs Quiz — {question_date.strftime('%d %b %Y')}"
     if run["source_date"] != question_date:
-        text += f"\n(Today's article wasn't published yet — questions are based on {run['source_date'].strftime('%d %b %Y')}'s current affairs.)"
+        text += f"\n(Today's article wasn't published yet — questions are based on current affairs from the past 7 days, through {run['source_date'].strftime('%d %b %Y')}.)"
     _post("sendMessage", {"chat_id": CHAT_ID, "text": text})
 
 

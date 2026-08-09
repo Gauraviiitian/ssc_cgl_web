@@ -10,6 +10,26 @@
   }, 1000);
 })();
 
+// Dashboard tab switcher (Mock Test / Current Affairs).
+(function () {
+  const tabs = document.querySelectorAll(".tab");
+  if (!tabs.length) return;
+  tabs.forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      tabs.forEach(function (t) {
+        t.classList.remove("active");
+        t.setAttribute("aria-selected", "false");
+      });
+      tab.classList.add("active");
+      tab.setAttribute("aria-selected", "true");
+      document.querySelectorAll(".tab-panel").forEach(function (p) {
+        p.hidden = true;
+      });
+      document.getElementById("panel-" + tab.dataset.tab).hidden = false;
+    });
+  });
+})();
+
 async function loadExplanation(sessionId, questionId) {
   const box = document.getElementById("explanation-box");
   box.innerHTML = "<p class='muted'>Loading explanation…</p>";

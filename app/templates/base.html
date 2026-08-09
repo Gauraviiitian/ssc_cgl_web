@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}SSC CGL Prep{% endblock %}</title>
+  <title>{% block title %}PrepZone{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="topbar">
-    <a href="/dashboard" class="brand">SSC CGL Prep</a>
+    <a href="/dashboard" class="brand">PrepZone</a>
     {% if request.session.get('user_id') %}
       <a href="/logout" class="logout">Logout</a>
     {% endif %}

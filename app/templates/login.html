@@ -1,11 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card centered">
-  <h1>SSC CGL Prep</h1>
+<div class="card centered welcome-card">
+  <img src="/static/prepzone_logo.png" alt="PrepZone" class="brand-logo">
+
   <p class="muted">Enter your name to start practicing.</p>
   <form method="post" action="/login">
     <input type="text" name="name" placeholder="Your name" required autofocus>
-    <button type="submit">Continue</button>
+    <button type="submit" class="primary">Continue</button>
   </form>
+
+  <div class="telegram-links">
+    <a href="https://t.me/PrepZone_Official" target="_blank" rel="noopener" class="btn-link secondary">Telegram Channel</a>
+    <a href="https://t.me/prepzoneofficial" target="_blank" rel="noopener" class="btn-link secondary">Discussion Group</a>
+  </div>
+
+  <p class="founders">Founded by Gaurav Mishra, Om Prakash Thakur &amp; Antriksh Verma</p>
 </div>
 {% endblock %}

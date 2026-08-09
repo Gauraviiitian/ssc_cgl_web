@@ -10,6 +10,14 @@ BASE_URL = "https://www.mahendras.org/blogs/current-affairs-{dd}-{mon}-{yyyy}"
 USER_AGENT = "Mozilla/5.0 (compatible; ssc-cgl-prep-bot/1.0)"
 MAX_SOURCE_CHARS = 15000
 
+# When today's article isn't published yet, combine whichever of the
+# previous FALLBACK_LOOKBACK_DAYS days have one, so Groq has enough fresh
+# material to write a new, different set of questions rather than just
+# reusing a single old day's (thinner) article.
+FALLBACK_LOOKBACK_DAYS = 7
+MAX_CHARS_PER_FALLBACK_DAY = 4000
+MAX_COMBINED_SOURCE_CHARS = 24000
+
 # Devanagari block; paragraphs mostly in this script are the Hindi
 # translation of the preceding English paragraph and add nothing for
 # Groq beyond extra tokens, so they're dropped.
@@ -53,33 +61,60 @@ def _extract_article_text(html: str) -> str:
             continue
         paragraphs.append(text)
 
-    joined = "\n".join(paragraphs)
-    return joined[:MAX_SOURCE_CHARS]
+    return "\n".join(paragraphs)
 
 
-def fetch_source_for_date(target_date: date, max_lookback_days: int = 10) -> tuple[str, str, date]:
-    """Fetch the CA article for target_date, falling back to earlier days if
-    that day's article isn't published yet. Returns (clean_text, source_url, source_date).
+def _fetch_day(client: httpx.Client, d: date) -> str | None:
+    """Return cleaned article text for date d, or None if it isn't published."""
+    resp = client.get(_url_for(d))
+    if resp.status_code != 200:
+        return None
+
+    soup = BeautifulSoup(resp.text, "lxml")
+    title = soup.title.get_text(strip=True) if soup.title else ""
+    if _title_marker(d) not in title:
+        return None  # soft-404: site redirected to the homepage
+
+    text = _extract_article_text(resp.text)
+    if len(text) < 200:
+        return None
+    return text
+
+
+def fetch_source_for_date(target_date: date) -> tuple[str, list[str], date]:
+    """Fetch CA source material for target_date.
+
+    If target_date's article is up, returns just that day's text. Otherwise
+    combines whichever of the FALLBACK_LOOKBACK_DAYS days before it have an
+    article, so there's still enough fresh material for Groq to generate a
+    new set of questions from.
+
+    Returns (source_text, source_urls, source_date) where source_date is
+    target_date itself, or the most recent fallback day used.
     """
     with httpx.Client(headers={"User-Agent": USER_AGENT}, timeout=20, follow_redirects=True) as client:
-        for offset in range(max_lookback_days + 1):
+        today_text = _fetch_day(client, target_date)
+        if today_text is not None:
+            return today_text[:MAX_SOURCE_CHARS], [_url_for(target_date)], target_date
+
+        chunks: list[str] = []
+        urls: list[str] = []
+        newest_available: date | None = None
+        for offset in range(1, FALLBACK_LOOKBACK_DAYS + 1):
             d = target_date - timedelta(days=offset)
-            url = _url_for(d)
-            resp = client.get(url)
-            if resp.status_code != 200:
+            text = _fetch_day(client, d)
+            if text is None:
                 continue
+            if newest_available is None:
+                newest_available = d
+            chunks.append(f"--- Current affairs {d.isoformat()} ---\n{text[:MAX_CHARS_PER_FALLBACK_DAY]}")
+            urls.append(_url_for(d))
 
-            soup = BeautifulSoup(resp.text, "lxml")
-            title = soup.title.get_text(strip=True) if soup.title else ""
-            if _title_marker(d) not in title:
-                continue  # soft-404: site redirected to the homepage
+        if not chunks:
+            raise SourceNotFoundError(
+                f"No current affairs article found for {target_date} or the "
+                f"{FALLBACK_LOOKBACK_DAYS} days before it"
+            )
 
-            text = _extract_article_text(resp.text)
-            if len(text) < 200:
-                continue
-
-            return text, url, d
-
-    raise SourceNotFoundError(
-        f"No current affairs article found for {target_date} or the {max_lookback_days} days before it"
-    )
+        combined = "\n\n".join(chunks)[:MAX_COMBINED_SOURCE_CHARS]
+        return combined, urls, newest_available
