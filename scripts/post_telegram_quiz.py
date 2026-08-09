@@ -57,9 +57,9 @@ def _post(method: str, payload: dict):
 
 
 def send_intro(question_date, run: dict):
-    text = f"📅 Daily Current Affairs Quiz — {question_date.strftime('%d %b %Y')}"
-    if run["source_date"] != question_date:
-        text += f"\n(Today's article wasn't published yet — questions are based on current affairs from the past 7 days, through {run['source_date'].strftime('%d %b %Y')}.)"
+    text = f"📅 PrepZone Daily Current Affairs Quiz — {question_date.strftime('%d %b %Y')}\n\n Starting in 30 seconds...\n"
+    # if run["source_date"] != question_date:
+    #     text += f"\n(Today's article wasn't published yet — questions are based on current affairs from the past 7 days, through {run['source_date'].strftime('%d %b %Y')}.)"
     _post("sendMessage", {"chat_id": CHAT_ID, "text": text})
 
 
@@ -98,6 +98,7 @@ def main():
 
     print(f"Posting {len(questions)} questions for {today} to chat {CHAT_ID}...")
     send_intro(today, run)
+    time.sleep(DELAY_BETWEEN_POLLS_SEC)
     for q in questions:
         cached = db.get_cached_explanation(q["id"])
         explanation = cached["explanation_text"] if cached else "See the practice app for the explanation."
