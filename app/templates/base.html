@@ -9,9 +9,14 @@
 <body>
   <header class="topbar">
     <a href="/dashboard" class="brand">PrepZone</a>
-    {% if request.session.get('user_id') %}
-      <a href="/logout" class="logout">Logout</a>
-    {% endif %}
+    <div class="topbar-right">
+      {% if request.session.get('is_admin') %}
+        <a href="/admin" class="admin-badge">Admin: {{ request.session.get('admin_name') }}</a>
+      {% endif %}
+      {% if request.session.get('user_id') %}
+        <a href="/logout" class="logout">Logout</a>
+      {% endif %}
+    </div>
   </header>
   <main class="container">
     {% block content %}{% endblock %}

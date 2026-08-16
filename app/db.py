@@ -12,20 +12,45 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 _pool = ThreadedConnectionPool(minconn=1, maxconn=10, dsn=DATABASE_URL)
 
 
+def _checked_out_conn():
+    """Neon (serverless Postgres) can silently close a pooled connection
+    while it sits idle; psycopg2's pool doesn't validate before handing one
+    out. Probe with a trivial query and discard+retry once rather than let
+    every caller's first real query hit "SSL connection has been closed
+    unexpectedly"."""
+    for attempt in range(2):
+        conn = _pool.getconn()
+        try:
+            with conn.cursor() as probe:
+                probe.execute("SELECT 1")
+            return conn
+        except (psycopg2.OperationalError, psycopg2.InterfaceError):
+            _pool.putconn(conn, close=True)
+            if attempt == 1:
+                raise
+
+
 @contextmanager
 def get_cursor(commit: bool = False):
-    conn = _pool.getconn()
+    conn = _checked_out_conn()
+    cur = None
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         yield cur
         if commit:
             conn.commit()
     except Exception:
-        conn.rollback()
+        # Neon can close idle pooled connections server-side; rollback() on an
+        # already-dead connection would itself raise and mask the real error.
+        if not conn.closed:
+            conn.rollback()
         raise
     finally:
-        cur.close()
-        _pool.putconn(conn)
+        if cur is not None:
+            cur.close()
+        # Don't recycle a connection Postgres/Neon already dropped — hand the
+        # pool a fresh one next time instead of repeating this failure.
+        _pool.putconn(conn, close=conn.closed)
 
 
 def init_schema():
@@ -125,14 +150,14 @@ def get_question(question_id: int) -> dict | None:
         return dict(row) if row else None
 
 
-def insert_question(subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source="generated", question_date=None, source_url=None) -> int:
+def insert_question(subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source="generated", question_date=None, source_url=None, paid_mock_test_id=None) -> int:
     with get_cursor(commit=True) as cur:
         cur.execute(
             """
-            INSERT INTO questions (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source, question_date, source_url)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
+            INSERT INTO questions (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source, question_date, source_url, paid_mock_test_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id
             """,
-            (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source, question_date, source_url),
+            (subject, topic, text, option_a, option_b, option_c, option_d, correct_option, difficulty, source, question_date, source_url, paid_mock_test_id),
         )
         return cur.fetchone()["id"]
 
@@ -191,6 +216,100 @@ def mark_ca_pdf_posted(question_date):
         cur.execute(
             "UPDATE daily_ca_runs SET pdf_posted_at = now() WHERE question_date = %s",
             (question_date,),
+        )
+
+
+# --- paid mock tests ---
+
+def create_paid_mock_test(title: str, uploaded_by: str) -> int:
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "INSERT INTO paid_mock_tests (title, uploaded_by) VALUES (%s, %s) RETURNING id",
+            (title, uploaded_by),
+        )
+        return cur.fetchone()["id"]
+
+
+def set_paid_mock_live(paid_mock_test_id: int, is_live: bool):
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "UPDATE paid_mock_tests SET is_live = %s WHERE id = %s",
+            (is_live, paid_mock_test_id),
+        )
+
+
+def list_paid_mock_tests(live_only: bool = False) -> list[dict]:
+    with get_cursor() as cur:
+        query = """
+            SELECT pmt.*, COUNT(q.id) AS question_count
+            FROM paid_mock_tests pmt
+            LEFT JOIN questions q ON q.paid_mock_test_id = pmt.id
+        """
+        if live_only:
+            query += " WHERE pmt.is_live = TRUE"
+        query += " GROUP BY pmt.id ORDER BY pmt.created_at DESC"
+        cur.execute(query)
+        return [dict(r) for r in cur.fetchall()]
+
+
+def get_paid_mock_test(paid_mock_test_id: int) -> dict | None:
+    with get_cursor() as cur:
+        cur.execute("SELECT * FROM paid_mock_tests WHERE id = %s", (paid_mock_test_id,))
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def paid_mock_questions(paid_mock_test_id: int) -> list[dict]:
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT * FROM questions WHERE paid_mock_test_id = %s ORDER BY id",
+            (paid_mock_test_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+# --- access keys ---
+
+def current_access_key() -> dict | None:
+    with get_cursor() as cur:
+        cur.execute("SELECT * FROM access_keys ORDER BY created_at DESC LIMIT 1")
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def generate_access_key(key_value: str) -> dict:
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "INSERT INTO access_keys (key_value, expires_at) VALUES (%s, now() + interval '1 day') RETURNING *",
+            (key_value,),
+        )
+        return dict(cur.fetchone())
+
+
+# --- paid mock attempts ---
+
+def get_paid_attempt(user_id: int, paid_mock_test_id: int) -> dict | None:
+    with get_cursor() as cur:
+        cur.execute(
+            "SELECT * FROM paid_mock_attempts WHERE user_id = %s AND paid_mock_test_id = %s",
+            (user_id, paid_mock_test_id),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def paid_attempts_for_user(user_id: int) -> dict:
+    """Maps paid_mock_test_id -> attempt row, for the dashboard's paid mocks list."""
+    with get_cursor() as cur:
+        cur.execute("SELECT * FROM paid_mock_attempts WHERE user_id = %s", (user_id,))
+        return {r["paid_mock_test_id"]: dict(r) for r in cur.fetchall()}
+
+
+def record_paid_attempt(user_id: int, paid_mock_test_id: int, session_id: int):
+    with get_cursor(commit=True) as cur:
+        cur.execute(
+            "INSERT INTO paid_mock_attempts (user_id, paid_mock_test_id, session_id) VALUES (%s, %s, %s)",
+            (user_id, paid_mock_test_id, session_id),
         )
 
 
@@ -303,6 +422,24 @@ def session_summary(session_id: int) -> dict:
         overall = dict(cur.fetchone())
 
         return {"overall": overall, "by_subject": by_subject}
+
+
+def session_review(session_id: int) -> list[dict]:
+    """Every question in a session with the user's selected option and
+    correctness, for a full after-the-fact answer review."""
+    with get_cursor() as cur:
+        cur.execute(
+            """
+            SELECT sq.seq, q.*, r.selected_option, r.is_correct
+            FROM session_questions sq
+            JOIN questions q ON q.id = sq.question_id
+            LEFT JOIN responses r ON r.session_id = sq.session_id AND r.question_id = sq.question_id
+            WHERE sq.session_id = %s
+            ORDER BY sq.seq
+            """,
+            (session_id,),
+        )
+        return [dict(r) for r in cur.fetchall()]
 
 
 def recent_answered_question_ids(user_id: int, session_limit: int = 1) -> list[int]:

@@ -74,3 +74,33 @@ CREATE TABLE IF NOT EXISTS daily_ca_runs (
 );
 
 ALTER TABLE daily_ca_runs ADD COLUMN IF NOT EXISTS pdf_posted_at TIMESTAMPTZ;
+
+-- Paid mock tests: admin-uploaded question sets, gated behind a shared
+-- access key. Questions live in the shared `questions` table just like
+-- Current Affairs does (subject='Paid Mock'), keyed by paid_mock_test_id.
+ALTER TABLE questions ADD COLUMN IF NOT EXISTS paid_mock_test_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_questions_paid_mock ON questions(paid_mock_test_id);
+
+CREATE TABLE IF NOT EXISTS paid_mock_tests (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    is_live BOOLEAN NOT NULL DEFAULT FALSE,
+    uploaded_by TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS access_keys (
+    id SERIAL PRIMARY KEY,
+    key_value TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS paid_mock_attempts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    paid_mock_test_id INTEGER NOT NULL REFERENCES paid_mock_tests(id),
+    session_id INTEGER NOT NULL REFERENCES sessions(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, paid_mock_test_id)
+);

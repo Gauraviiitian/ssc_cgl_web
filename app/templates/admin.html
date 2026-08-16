@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Admin — {{ admin_name }}</h1>
+
+  <div class="admin-section">
+    <h3>Access Key</h3>
+    {% if current_key %}
+    <p>Current key: <code class="key-code">{{ current_key.key_value }}</code></p>
+    <p class="muted">Expires: {{ current_key.expires_at.strftime('%d %b %Y, %I:%M %p UTC') }}</p>
+    {% else %}
+    <p class="muted">No key generated yet.</p>
+    {% endif %}
+    <form method="post" action="/admin/keys/generate">
+      <button type="submit" class="secondary">Generate New Key</button>
+    </form>
+  </div>
+
+  <div class="admin-section">
+    <h3>Upload Mock Test</h3>
+    {% if upload_result %}
+      {% if upload_result.failed %}
+      <p class="result incorrect">{{ upload_result.failed }}</p>
+      {% else %}
+      <p class="result correct">Imported {{ upload_result.imported }} questions into "{{ upload_result.title }}".</p>
+      {% endif %}
+      {% if upload_result.errors %}
+      <ul class="upload-errors">
+        {% for err in upload_result.errors %}
+        <li>{{ err }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endif %}
+    <form method="post" action="/admin/mocks/upload" enctype="multipart/form-data">
+      <input type="text" name="title" placeholder="Mock test title" required>
+      <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
+      <button type="submit" class="primary">Upload</button>
+    </form>
+    <p class="muted">Columns: question, option_a, option_b, option_c, option_d, correct_option, explanation (optional)</p>
+  </div>
+
+  <div class="admin-section">
+    <h3>Mock Tests</h3>
+    {% if mocks %}
+    <table class="summary-table">
+      <thead><tr><th>Title</th><th>Questions</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for m in mocks %}
+        <tr>
+          <td>{{ m.title }}</td>
+          <td>{{ m.question_count }}</td>
+          <td>{% if m.is_live %}<span class="tag live">Live</span>{% else %}<span class="tag">Draft</span>{% endif %}</td>
+          <td>
+            <form method="post" action="/admin/mocks/{{ m.id }}/toggle_live">
+              <button type="submit" class="secondary small">{% if m.is_live %}Unpublish{% else %}Make Live{% endif %}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="muted">No mock tests uploaded yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

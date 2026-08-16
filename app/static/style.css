@@ -9,7 +9,7 @@ body {
   body { background: #14161a; color: #e8e8e8; }
   .card { background: #1e2126 !important; }
   .option { background: #262a31 !important; color: #e8e8e8 !important; border-color: #383d45 !important; }
-  input[type=text] { background: #262a31 !important; color: #e8e8e8 !important; border-color: #383d45 !important; }
+  input[type=text], input[type=password], input[type=file] { background: #262a31 !important; color: #e8e8e8 !important; border-color: #383d45 !important; }
 
   .reveal li { background: #262a31; color: #e8e8e8; }
   .reveal li.correct { background: #14532d; color: #bbf7d0; }
@@ -24,6 +24,12 @@ body {
 
   .perf-stat { background: #262a31; }
   .perf-number { color: #60a5fa; }
+
+  .admin-section { border-color: #383d45; }
+  .key-code { background: #262a31; color: #60a5fa; }
+  .upload-errors { background: #3f2d0a; color: #fde68a; }
+  .paid-mock-item { background: #262a31; }
+  .admin-badge { background: #3f2d0a; color: #fde68a; }
 }
 
 .topbar {
@@ -42,7 +48,7 @@ body {
 .centered { text-align: center; }
 .muted { color: #888; }
 
-input[type=text] {
+input[type=text], input[type=password], input[type=file] {
   width: 100%; padding: 0.75rem; font-size: 1rem;
   border: 1px solid #ccc; border-radius: 8px; margin-bottom: 1rem;
 }
@@ -117,3 +123,38 @@ button.secondary, .btn-link.secondary { background: #eee; color: #333; }
 .summary-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
 .summary-table th, .summary-table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; }
 .score { font-size: 1.5rem; font-weight: 700; }
+
+.topbar-right { display: flex; align-items: center; gap: 1rem; }
+.admin-badge {
+  text-decoration: none; font-size: 0.85rem; font-weight: 600;
+  background: #fff7ed; color: #9a3412; padding: 0.3rem 0.7rem; border-radius: 999px;
+}
+
+.actions-row { display: flex; gap: 0.6rem; margin-top: 1.5rem; }
+.actions-row .btn-link { flex: 1; }
+
+.review-question { padding: 1.25rem 0; border-bottom: 1px solid #eee; }
+.review-question:last-of-type { border-bottom: none; }
+
+.admin-section { padding: 1.25rem 0; border-bottom: 1px solid #eee; }
+.admin-section:last-child { border-bottom: none; }
+.admin-section h3 { margin-top: 0; }
+
+.key-code {
+  font-size: 1.3rem; font-weight: 700; letter-spacing: 0.1em;
+  background: #eef2ff; color: #2563eb; padding: 0.3rem 0.6rem; border-radius: 6px;
+}
+
+.upload-errors {
+  background: #fffbea; color: #78350f; border-radius: 8px;
+  padding: 0.75rem 1.25rem; margin: 0.75rem 0; font-size: 0.85rem;
+}
+
+.tag.live { background: #dcfce7; color: #14532d; }
+button.small, button.secondary.small { padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+
+.paid-mock-list { list-style: none; padding: 0; margin: 0; }
+.paid-mock-item {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+  padding: 1rem; border-radius: 8px; background: #f5f6f8; margin-bottom: 0.6rem;
+}

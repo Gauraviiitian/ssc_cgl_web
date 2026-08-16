@@ -4,6 +4,7 @@
   <button type="button" class="tab active" data-tab="mock" role="tab" aria-selected="true">Mock Test</button>
   <button type="button" class="tab" data-tab="ca" role="tab" aria-selected="false">Current Affairs</button>
   <button type="button" class="tab" data-tab="performance" role="tab" aria-selected="false">My Performance</button>
+  <button type="button" class="tab" data-tab="paid" role="tab" aria-selected="false">Paid Mock Tests</button>
 </div>
 
 <div class="card">
@@ -67,6 +68,41 @@
     </table>
     {% else %}
     <p class="muted">No quizzes completed yet — finish a Mock Test or Current Affairs quiz to see your performance here.</p>
+    {% endif %}
+  </div>
+
+  <div id="panel-paid" class="tab-panel" hidden>
+    {% if not paid_unlocked %}
+    {% if paid_error %}
+    <p class="result incorrect">Invalid or expired key.</p>
+    {% endif %}
+    <p class="muted">Enter today's access key to unlock paid mock tests.</p>
+    <form method="post" action="/paid/unlock">
+      <input type="text" name="key" placeholder="Access key" required autocapitalize="characters">
+      <button type="submit" class="primary">Unlock</button>
+    </form>
+    {% else %}
+      {% if live_mocks %}
+      <ul class="paid-mock-list">
+        {% for m in live_mocks %}
+        <li class="paid-mock-item">
+          <div>
+            <strong>{{ m.title }}</strong>
+            <span class="muted">· {{ m.question_count }} questions</span>
+          </div>
+          {% if m.id in attempts_by_mock %}
+          <a href="/mock/{{ attempts_by_mock[m.id].session_id }}/review" class="secondary btn-link">View Your Results</a>
+          {% else %}
+          <form method="post" action="/paid/start/{{ m.id }}">
+            <button type="submit" class="primary">Start Mock Test</button>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No paid mock tests are live yet — check back soon.</p>
+      {% endif %}
     {% endif %}
   </div>
 </div>

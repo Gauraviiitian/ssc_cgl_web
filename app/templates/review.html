@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h1>Answer Review</h1>
+  {% for q in questions %}
+  <div class="review-question">
+    <p class="progress">Q{{ loop.index }} · <span class="tag">{{ q.subject }}</span></p>
+    <h3 class="qtext">{{ q.text }}</h3>
+    <ul class="reveal">
+      <li class="{% if q.correct_option == 'A' %}correct{% endif %} {% if q.selected_option == 'A' %}selected{% endif %}">A. {{ q.option_a }}</li>
+      <li class="{% if q.correct_option == 'B' %}correct{% endif %} {% if q.selected_option == 'B' %}selected{% endif %}">B. {{ q.option_b }}</li>
+      <li class="{% if q.correct_option == 'C' %}correct{% endif %} {% if q.selected_option == 'C' %}selected{% endif %}">C. {{ q.option_c }}</li>
+      <li class="{% if q.correct_option == 'D' %}correct{% endif %} {% if q.selected_option == 'D' %}selected{% endif %}">D. {{ q.option_d }}</li>
+    </ul>
+    {% if not q.selected_option %}
+    <p class="muted">Not answered.</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <a href="/dashboard" class="primary btn-link">Back to Dashboard</a>
+</div>
+{% endblock %}

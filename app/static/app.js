@@ -10,24 +10,35 @@
   }, 1000);
 })();
 
-// Dashboard tab switcher (Mock Test / Current Affairs).
+// Dashboard tab switcher (Mock Test / Current Affairs / My Performance / Paid Mock Tests).
+// Also honors a #<tab-name> URL hash on load, so redirects (e.g. after
+// /paid/unlock) can land the user on the right tab.
 (function () {
   const tabs = document.querySelectorAll(".tab");
   if (!tabs.length) return;
+
+  function activate(tab) {
+    tabs.forEach(function (t) {
+      t.classList.remove("active");
+      t.setAttribute("aria-selected", "false");
+    });
+    tab.classList.add("active");
+    tab.setAttribute("aria-selected", "true");
+    document.querySelectorAll(".tab-panel").forEach(function (p) {
+      p.hidden = true;
+    });
+    document.getElementById("panel-" + tab.dataset.tab).hidden = false;
+  }
+
   tabs.forEach(function (tab) {
     tab.addEventListener("click", function () {
-      tabs.forEach(function (t) {
-        t.classList.remove("active");
-        t.setAttribute("aria-selected", "false");
-      });
-      tab.classList.add("active");
-      tab.setAttribute("aria-selected", "true");
-      document.querySelectorAll(".tab-panel").forEach(function (p) {
-        p.hidden = true;
-      });
-      document.getElementById("panel-" + tab.dataset.tab).hidden = false;
+      activate(tab);
     });
   });
+
+  const hash = location.hash.replace("#", "");
+  const targetTab = hash && document.querySelector('.tab[data-tab="' + hash + '"]');
+  if (targetTab) activate(targetTab);
 })();
 
 async function loadExplanation(sessionId, questionId) {
