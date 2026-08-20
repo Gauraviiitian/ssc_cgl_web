@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from time import time
+import time
 from typing import Literal
 
 from groq import APIStatusError
@@ -142,33 +142,74 @@ _ca_generate_llm = ChatGroq(
 ).with_structured_output(CAQuestionBatch)
 
 
+def _chunk_by_lines(text: str, max_chars: int) -> list[str]:
+    """Split text into <= max_chars chunks, breaking only at newlines so
+    each chunk stays a clean set of whole lines rather than cutting a
+    sentence/paragraph in half."""
+    chunks: list[str] = []
+    current: list[str] = []
+    current_len = 0
+    for line in text.split("\n"):
+        line_len = len(line) + 1  # +1 for the newline that rejoins it
+        if current and current_len + line_len > max_chars:
+            chunks.append("\n".join(current))
+            current = []
+            current_len = 0
+        current.append(line)
+        current_len += line_len
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
+
+
+def _call_ca_llm(source_text: str) -> CAQuestionBatch:
+    user_prompt = (
+        f"""Generate SSC CGL Tier-1 current-affairs MCQs from the news digest below. "
+        Vary difficulty and category across the set.
+        DO NOT Generate duplicate questions.
+        DO NOT Generate more than one questions per topic or category.\n\n
+        SOURCE:\n{source_text}"""
+    )
+    return _ca_generate_llm.invoke([
+        ("system", CA_GENERATE_SYSTEM_PROMPT),
+        ("user", user_prompt),
+    ])
+
+
+CHUNK_CHARS = 8000
+CHUNK_SLEEP_SEC = 60
+
+
 def generate_ca_questions(source_text: str, count: int = 10) -> list[dict]:
     # The char caps in ca_scraper.py keep this well under the org's TPM
-    # limit in the normal case, but if a request still comes back 413
-    # (request too large), halve the source text and retry once rather
-    # than fail the whole day's pipeline over it.
-    for attempt in range(2):
-        user_prompt = (
-            f"""Generate SSC CGL Tier-1 current-affairs MCQs from the news digest below. "
-            Vary difficulty and category across the set. 
-            DO NOT Generate duplicate questions.
-            DO NOT Generate more than one questions per topic or category.\n\n
-            SOURCE:\n{source_text}"""
-        )
-        try:
-            result = _ca_generate_llm.invoke([
-                ("system", CA_GENERATE_SYSTEM_PROMPT),
-                ("user", user_prompt),
-            ])
-            break
-        except APIStatusError as e:
-            if e.status_code == 413 and attempt == 0:
-                time.sleep(60)  # wait a minute before retrying, in case the org's TPM limit is being hit
-                source_text = source_text[:len(source_text) // 2]
-                print(f"  Groq 413 (request too large) — retrying with source halved to {len(source_text)} chars")
-                continue
+    # limit in the normal case. If a request still comes back 413 (request
+    # too large), break the source into clean, newline-bounded ~8000-char
+    # chunks and generate from each separately, sleeping a minute between
+    # calls so consecutive chunks don't stack up against the same TPM
+    # window — rather than fail the whole day's pipeline over it.
+    try:
+        result = _call_ca_llm(source_text)
+        questions = list(result.questions)
+    except APIStatusError as e:
+        if e.status_code != 413:
             raise
+
+        chunks = _chunk_by_lines(source_text, CHUNK_CHARS)
+        print(f"  Groq 413 (request too large) — splitting source into {len(chunks)} chunk(s) of <= {CHUNK_CHARS} chars")
+
+        questions = []
+        for i, chunk in enumerate(chunks):
+            if i > 0:
+                time.sleep(CHUNK_SLEEP_SEC)
+            try:
+                chunk_result = _call_ca_llm(chunk)
+                questions.extend(chunk_result.questions)
+            except APIStatusError as chunk_error:
+                if chunk_error.status_code == 413:
+                    print(f"  Chunk {i + 1}/{len(chunks)} ({len(chunk)} chars) still too large — skipping")
+                    continue
+                raise
 
     # correct_option is schema-guaranteed now; explanation is free text, so
     # still guard against the model leaving it blank.
-    return [q.model_dump() for q in result.questions if q.explanation.strip()]
+    return [q.model_dump() for q in questions if q.explanation.strip()]
