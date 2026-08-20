@@ -104,9 +104,9 @@ def generate_questions(subject: str, topic: str, count: int) -> list[dict]:
 CA_GENERATE_SYSTEM_PROMPT = (
     """You write SSC CGL Tier-1 style current-affairs multiple-choice questions from a daily news digest.
     Use only facts present in the supplied source text — do not invent facts. Vary difficulty across easy/medium/hard, and vary the category across the
-    questions (pick each from: Polity, Economy, Sports, Awards, Science & Tech, National, International, Defence, Schemes, Appointments, Banking, Environment).
+    questions (Categories: Polity, Economy, Sports, Awards, Science & Tech, National, International, Defence, Schemes, Appointments, Banking, Environment).
     Ensure exactly one option is correct and options are not directly doable using guess work or elimination.
-    Keep "explanation" under 300 characters, plain text, no markdown. """
+    Keep "explanation" under 200 characters, plain text, no markdown. """
 
     """Some examples of valid questions:
     Q1. Mary Kom won her last international gold medal at which boxing competition?
@@ -142,16 +142,18 @@ _ca_generate_llm = ChatGroq(
 ).with_structured_output(CAQuestionBatch)
 
 
-def generate_ca_questions(source_text: str, count: int = 20) -> list[dict]:
+def generate_ca_questions(source_text: str, count: int = 10) -> list[dict]:
     # The char caps in ca_scraper.py keep this well under the org's TPM
     # limit in the normal case, but if a request still comes back 413
     # (request too large), halve the source text and retry once rather
     # than fail the whole day's pipeline over it.
     for attempt in range(2):
         user_prompt = (
-            f"Generate {count} SSC CGL Tier-1 current-affairs MCQs from the news digest below. "
-            "Vary difficulty and category across the set.\n\n"
-            f"SOURCE:\n{source_text}"
+            f"""Generate SSC CGL Tier-1 current-affairs MCQs from the news digest below. "
+            Vary difficulty and category across the set. 
+            DO NOT Generate duplicate questions.
+            DO NOT Generate more than one questions per topic or category.\n\n
+            SOURCE:\n{source_text}"""
         )
         try:
             result = _ca_generate_llm.invoke([

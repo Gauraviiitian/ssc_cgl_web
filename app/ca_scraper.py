@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.mahendras.org/blogs/current-affairs-{dd}-{mon}-{yyyy}"
 USER_AGENT = "Mozilla/5.0 (compatible; ssc-cgl-prep-bot/1.0)"
-MAX_SOURCE_CHARS = 15000
+MAX_SOURCE_CHARS = 12000
 
 # When today's article isn't published yet, combine whichever of the
 # previous FALLBACK_LOOKBACK_DAYS days have one, so Groq has enough fresh
