@@ -2,7 +2,7 @@ name: Daily Current Affairs
 
 on:
   schedule:
-    - cron: "30 4 * * *"  # 04:30 UTC ≈ 10:00 IST
+    - cron: "30 7 * * *"  # 07:30 UTC ≈ 13:00 IST
   workflow_dispatch: {}
 
 jobs:

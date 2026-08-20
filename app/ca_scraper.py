@@ -14,9 +14,15 @@ MAX_SOURCE_CHARS = 15000
 # previous FALLBACK_LOOKBACK_DAYS days have one, so Groq has enough fresh
 # material to write a new, different set of questions rather than just
 # reusing a single old day's (thinner) article.
+#
+# Kept small enough that source text + the (fairly verbose) system prompt +
+# the completion's max_tokens together stay under Groq's tokens-per-minute
+# cap for this model/tier (hit a 413 "rate_limit_exceeded" in production
+# once a multi-day fallback pushed a request to ~10.6k tokens against an
+# 8000 TPM limit) — see app/llm.py's generate_ca_questions max_tokens.
 FALLBACK_LOOKBACK_DAYS = 7
-MAX_CHARS_PER_FALLBACK_DAY = 4000
-MAX_COMBINED_SOURCE_CHARS = 24000
+MAX_CHARS_PER_FALLBACK_DAY = 900
+MAX_COMBINED_SOURCE_CHARS = 6000
 
 # Devanagari block; paragraphs mostly in this script are the Hindi
 # translation of the preceding English paragraph and add nothing for
